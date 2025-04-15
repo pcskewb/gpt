@@ -8,9 +8,9 @@ from openai import OpenAI
 # Set your OpenAI API key
 client = OpenAI(api_key="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")  # Replace with your key
 
-st.set_page_config(page_title="📊 GPT-4o Excel Chat", page_icon="🤖", layout="wide")
+st.set_page_config(page_title="📊 Skewb-GPT Excel Chat", page_icon="🤖", layout="wide")
 
-st.markdown("<h1 style='text-align: center;'>📊 Chat with GPT-4o About Your Excel File</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center;'>📊 Chat with Skewb-GPT About Your Excel File</h1>", unsafe_allow_html=True)
 
 # Sidebar for Excel upload
 with st.sidebar:
@@ -148,10 +148,10 @@ Only provide JSON in that case no other info. Otherwise, answer normally in text
                     # Display the text part before the JSON (if any)
                     text_part = response_text.split('```')[0].strip()
                     if text_part:
-                        st.markdown(f'<div class="chat-bubble bot-bubble"><strong>GPT-4o:</strong><br>{text_part}</div>', unsafe_allow_html=True)
+                        st.markdown(f'<div class="chat-bubble bot-bubble"><strong>Skewb-GPT:</strong><br>{text_part}</div>', unsafe_allow_html=True)
                     
                     # Create and display the plot
-                    st.markdown(f'<div class="chat-bubble bot-bubble"><strong>GPT-4o:</strong><br>Generated Plot:</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="chat-bubble bot-bubble"><strong>Skewb-GPT:</strong><br>Generated Plot:</div>', unsafe_allow_html=True)
 
                     fig = None
                     if chart_data["type"] == "bar":
@@ -172,7 +172,7 @@ Only provide JSON in that case no other info. Otherwise, answer normally in text
                     if len(parts) > 2:
                         text_part_after = parts[2].strip()
                         if text_part_after:
-                            st.markdown(f'<div class="chat-bubble bot-bubble"><strong>GPT-4o:</strong><br>{text_part_after}</div>', unsafe_allow_html=True)
+                            st.markdown(f'<div class="chat-bubble bot-bubble"><strong>Skewb-GPT:</strong><br>{text_part_after}</div>', unsafe_allow_html=True)
                     
                     continue  # Skip the normal text display if we showed a plot
         except Exception as e:
@@ -180,7 +180,7 @@ Only provide JSON in that case no other info. Otherwise, answer normally in text
     
     # If no plot was created, display the full response as text
         if not plot_created:
-            st.markdown(f'<div class="chat-bubble bot-bubble"><strong>GPT-4o:</strong><br>{response_text}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="chat-bubble bot-bubble"><strong>Skewb-GPT:</strong><br>{response_text}</div>', unsafe_allow_html=True)
     
     
     # Input section
