@@ -3,10 +3,17 @@ import pandas as pd
 import json
 import plotly.express as px
 from openai import OpenAI
+from dotenv import load_dotenv
+import os
 
+load_dotenv()  # This loads the .env file into your current environment
+
+   # Access the environment variables using os.environ
+#    database_url = os.environ.get("DATABASE_URL")
+api_key = os.environ.get("api_key")
 
 # Set your OpenAI API key
-client = OpenAI(api_key="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")  # Replace with your key
+client = OpenAI(api_key=api_key)  # Replace with your key
 
 st.set_page_config(page_title="📊 Skewb-GPT Excel Chat", page_icon="🤖", layout="wide")
 
