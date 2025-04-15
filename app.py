@@ -5,7 +5,7 @@ import plotly.express as px
 from openai import OpenAI
 
 # Set your OpenAI API key
-client = OpenAI(api_key="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")  # Replace with your key
+client = OpenAI(api_key="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")  # Replace with your key
 
 st.set_page_config(page_title="📊 GPT-4o Excel Chat", page_icon="🤖", layout="wide")
 
