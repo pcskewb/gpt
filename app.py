@@ -6,7 +6,7 @@ from openai import OpenAI
 
 
 # Set your OpenAI API key
-client = OpenAI(api_key="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")  # Replace with your key
+client = OpenAI(api_key="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")  # Replace with your key
 
 st.set_page_config(page_title="📊 GPT-4o Excel Chat", page_icon="🤖", layout="wide")
 
