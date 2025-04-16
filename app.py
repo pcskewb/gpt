@@ -5,8 +5,15 @@ import plotly.express as px
 from openai import OpenAI
 from dotenv import load_dotenv
 import os
+import re
+import base64
+import streamlit.components.v1 as components
+
+
 
 load_dotenv()  # This loads the .env file into your current environment
+
+# st.set_page_config(layout="centered")
 
    # Access the environment variables using os.environ
 #    database_url = os.environ.get("DATABASE_URL")
@@ -15,9 +22,26 @@ api_key = os.environ.get("api_key")
 # Set your OpenAI API key
 client = OpenAI(api_key=api_key)  # Replace with your key
 
-st.set_page_config(page_title="📊 Skewb-GPT Excel Chat", page_icon="🤖", layout="wide")
+with open("skewb-logomark 3.png", "rb") as image_file:
+    encoded = base64.b64encode(image_file.read()).decode()
 
-st.markdown("<h1 style='text-align: center;'>📊 Chat with Skewb-GPT About Your Excel File</h1>", unsafe_allow_html=True)
+st.set_page_config(page_title="SkewbGPT ", layout="centered")
+
+
+favicon_html = f"""
+<link rel="icon" type="image/png" href="data:image/png;base64,{encoded}">
+"""
+components.html(favicon_html, height=0, width=0)
+
+# st.markdown("<h1 style='text-align: center;'>SkewbGPT </h1>", unsafe_allow_html=True)
+html_code = f"""
+<h1 style='text-align: center; padding:0 px'>
+    <img src='data:image/png;base64,{encoded}' alt='logo' style='height: 40px; vertical-align: middle; margin-right: 10px;'>
+    SkewbGPT
+</h1>
+"""
+
+st.markdown(html_code, unsafe_allow_html=True)
 
 # Sidebar for Excel upload
 with st.sidebar:
@@ -59,20 +83,27 @@ st.markdown("""
             word-wrap: break-word;
         }
         .user-bubble {
-            background-color: #DCF0FF;
+            background-color: #000000;
             margin-left: auto;
             text-align: right;
+            color: white;
         }
         .bot-bubble {
-            background-color: #F0F0F0;
+            background-color: #d6ff41;
             margin-right: auto;
             text-align: left;
+            color: black;
         }
+        
         .chat-container {
             height: 10vh;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
+        }
+            
+        .stVerticalBlock{
+            padding: 0px !important;
         }
         .input-container {
             display: flex;
@@ -216,15 +247,38 @@ EXCLUSIONS
 - Do not show equations or programming code unless asked  
 - Use exact values from Excel
 
-If the user asks for a chart, graph, or visualization, respond with valid JSON in the following format:  
-{{  
-  "type": "bar" | "line" | "scatter" | "pie",  
-  "title": "Plot Title",  
-  "x": ["x1", "x2", ...],  
-  "y": ["y1", "y2", ...]  
-}}
+If the user asks for a chart, graph, or visualization, respond with valid JSON in the following format: 
+
+this is just format only a example, labels values and all other factors will vary according to asked query
+[
+  {{
+    "type": "line" | "bar" | ...,
+    "title": "title",
+    "labels": ["label1", "label2",....],
+    "values": {{
+      "series1": [100, 110,...],
+      "series2": [100, 130,...],
+      ....
+    }},
+    "x_title": "x title",
+    "y_title": "y title"
+  }},
+  {{
+    "type": "bar",
+    "title": "title",
+    "labels": ["label1", "label2",...],
+    "values": {{
+      "series1": [300, 400, 500,...],
+      "series2": [30, 45, 60,...],
+      ....
+    }},
+    "x_title": "x title",
+    "y_title": "y title"
+  }}
+]
 
 
+and do not give formula in any series.
 """
 
 
@@ -279,42 +333,62 @@ If the user asks for a chart, graph, or visualization, respond with valid JSON i
             elif '```' in response_text:
                 # Try without explicit json marker
                 json_string = response_text.split('```')[1].split('```')[0].strip()
+            else:
+                # Fallback: try to extract a raw JSON object from the text using regex
+                match = re.search(r'{[\s\S]*?}', response_text)
+                if match:
+                    json_string = match.group(0)
+
+
+            print("json_string:", json_string)
             
             if json_string:
                 # Try to parse the JSON
+                json_string = re.sub(r'//.*', '', json_string)
+
                 chart_data = json.loads(json_string)
                 
-                if isinstance(chart_data, dict) and all(k in chart_data for k in ("type", "title", "x", "y")):
-                    # Display the text part before the JSON (if any)
-                    text_part = response_text.split('```')[0].strip()
-                    if text_part:
-                        st.markdown(f'<div class="chat-bubble bot-bubble"><strong>Skewb-GPT:</strong><br>{text_part}</div>', unsafe_allow_html=True)
-                    
-                    # Create and display the plot
-                    st.markdown(f'<div class="chat-bubble bot-bubble"><strong>Skewb-GPT:</strong><br>Generated Plot:</div>', unsafe_allow_html=True)
+                # After json.loads(json_string)
+                charts = chart_data if isinstance(chart_data, list) else [chart_data]
+
+                for chart in charts:
+                    if not all(k in chart for k in ("type", "title", "labels", "values")):
+                        continue
+
+                    x_vals = chart["labels"]
+                    y_vals = chart["values"]
+                    title = chart["title"]
+                    x_title = chart.get("x_title", "")
+                    y_title = chart.get("y_title", "")
+                    chart_type = chart["type"]
 
                     fig = None
-                    if chart_data["type"] == "bar":
-                        fig = px.bar(x=chart_data["x"], y=chart_data["y"], title=chart_data["title"])
-                    elif chart_data["type"] == "line":
-                        fig = px.line(x=chart_data["x"], y=chart_data["y"], title=chart_data["title"])
-                    elif chart_data["type"] == "scatter":
-                        fig = px.scatter(x=chart_data["x"], y=chart_data["y"], title=chart_data["title"])
-                    elif chart_data["type"] == "pie":
-                        fig = px.pie(names=chart_data["x"], values=chart_data["y"], title=chart_data["title"])
+
+                    if isinstance(y_vals, dict):  # Multiple series
+                        df = pd.DataFrame({**{"labels": x_vals}, **y_vals})
+                        df_long = df.melt(id_vars="labels", var_name="Series", value_name="values")
+
+                        if chart_type == "line":
+                            fig = px.line(df_long, x="labels", y="values", color="Series", title=title)
+                        elif chart_type == "bar":
+                            fig = px.bar(df_long, x="labels", y="values", color="Series", title=title, barmode="group")
+                        elif chart_type == "scatter":
+                            fig = px.scatter(df_long, x="labels", y="values", color="Series", title=title)
+                    else:  # Single series
+                        if chart_type == "line":
+                            fig = px.line(x=x_vals, y=y_vals, title=title)
+                        elif chart_type == "bar":
+                            fig = px.bar(x=x_vals, y=y_vals, title=title)
+                        elif chart_type == "scatter":
+                            fig = px.scatter(x=x_vals, y=y_vals, title=title)
+                        elif chart_type == "pie":
+                            fig = px.pie(names=x_vals, values=y_vals, title=title)
 
                     if fig:
+                        fig.update_layout(xaxis_title=x_title, yaxis_title=y_title)
                         st.plotly_chart(fig, use_container_width=True)
                         plot_created = True
-                    
-                    # Display any text after the JSON (if any)
-                    parts = response_text.split('```')
-                    if len(parts) > 2:
-                        text_part_after = parts[2].strip()
-                        if text_part_after:
-                            st.markdown(f'<div class="chat-bubble bot-bubble"><strong>Skewb-GPT:</strong><br>{text_part_after}</div>', unsafe_allow_html=True)
-                    
-                    continue  # Skip the normal text display if we showed a plot
+
         except Exception as e:
             st.error(f"Error processing response: {str(e)}")
     
