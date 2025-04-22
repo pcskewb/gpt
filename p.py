@@ -10,11 +10,11 @@ import docx
 from dotenv import load_dotenv
 import os
 
-
 load_dotenv()
 
 api_key = os.environ.get("api_key")
 ID = os.environ.get("ID")
+
 # ------------------------------------------------------------------
 # 1) Setup OpenAI Client
 # ------------------------------------------------------------------
@@ -60,6 +60,9 @@ if "thread" not in st.session_state:
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+if "code_toggles" not in st.session_state:
+    st.session_state.code_toggles = {}
+
 # ------------------------------------------------------------------
 # File Fetching
 # ------------------------------------------------------------------
@@ -71,14 +74,38 @@ def fetch_file(file_id: str):
     return None
 
 # ------------------------------------------------------------------
+# Toggle callback function
+# ------------------------------------------------------------------
+def toggle_code(key):
+    st.session_state.code_toggles[key] = not st.session_state.code_toggles.get(key, False)
+
+# ------------------------------------------------------------------
 # Show Message History
 # ------------------------------------------------------------------
-for msg in st.session_state.messages:
+for i, msg in enumerate(st.session_state.messages):
     with st.chat_message(msg["role"]):
         if "content" in msg:
             st.markdown(msg["content"])
         if "code" in msg and msg["code"]:
-            st.code(msg["code"], language="python")
+            # Generate a unique key for each message's toggle using both index and role
+            unique_key = f"analyze_{msg['role']}_{i}"
+            
+            # Initialize toggle state if not exists
+            if unique_key not in st.session_state.code_toggles:
+                st.session_state.code_toggles[unique_key] = False
+                
+            # Display toggle and code
+            analyze_toggle = st.toggle(
+                "Analyze", 
+                key=unique_key,
+                value=st.session_state.code_toggles[unique_key],
+                on_change=toggle_code,
+                args=(unique_key,)
+            )
+            
+            if st.session_state.code_toggles[unique_key]:
+                st.code(msg["code"], language="python")
+                
         if "image" in msg and msg["image"]:
             st.image(msg["image"])
         if "files" in msg and msg["files"]:
@@ -102,6 +129,7 @@ prompt = st.chat_input("Enter your message:")
 # ------------------------------------------------------------------
 # Custom Streamlit Handler
 # ------------------------------------------------------------------
+
 class StreamlitHandler(AssistantEventHandler):
     def __init__(self):
         super().__init__()
@@ -109,14 +137,16 @@ class StreamlitHandler(AssistantEventHandler):
         self.code = ""
         self.images = []
         self.files = []
+        self.code_ready = False
 
         self.txt_box = st.empty()
-        self.code_box = st.empty()
+        self.code_container = st.container()
 
     @override
     def on_text_delta(self, delta, _):
-        self.text += delta.value
-        self.txt_box.markdown(self.text + "▌")
+        if delta.value is not None:
+            self.text += delta.value
+            self.txt_box.markdown(self.text + "▌")
 
     @override
     def on_tool_call_created(self, tc):
@@ -125,20 +155,20 @@ class StreamlitHandler(AssistantEventHandler):
             if not isinstance(snippet, str):
                 snippet = snippet.value
             self.code += snippet
-            self.code_box.code(self.code, language="python")
 
     @override
     def on_tool_call_delta(self, delta, _):
         if delta.type != "code_interpreter":
             return
 
+        # Capture code during tool execution
         if delta.code_interpreter.input:
             snippet = delta.code_interpreter.input
             if not isinstance(snippet, str):
                 snippet = snippet.value
             self.code += snippet
-            self.code_box.code(self.code, language="python")
 
+        # Show outputs if any
         for out in delta.code_interpreter.outputs or []:
             if out.type == "image":
                 img_data = fetch_file(out.image.file_id)
@@ -187,6 +217,32 @@ if prompt:
                 event_handler=handler
             ) as run_stream:
                 run_stream.until_done()
+        
+        # Final text without cursor
+        handler.txt_box.markdown(handler.text.strip())
+        
+        # Create a unique key for this response
+        current_index = len(st.session_state.messages)
+        unique_key = f"analyze_assistant_{current_index}"
+        
+        # Add toggle for code after run is complete
+        if handler.code:
+            # Initialize the toggle state in session state
+            if unique_key not in st.session_state.code_toggles:
+                st.session_state.code_toggles[unique_key] = False
+                
+            # Display toggle and code
+            with handler.code_container:
+                analyze_toggle = st.toggle(
+                    "Analyze", 
+                    key=unique_key,
+                    value=st.session_state.code_toggles[unique_key],
+                    on_change=toggle_code,
+                    args=(unique_key,)
+                )
+                
+                if st.session_state.code_toggles[unique_key]:
+                    st.code(handler.code, language="python")
 
         # Save to message history
         st.session_state.messages.append({
