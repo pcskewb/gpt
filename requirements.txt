@@ -1,0 +1,8 @@
+﻿pandas
+plotly
+openai
+streamlit
+openpyxl
+tabulate
+python-dotenv  
+python-docx
